@@ -101,7 +101,8 @@ export const useSWRHandler = <Data = any, Error = any>(
   const fallback = isUndefined(fallbackData)
     ? config.fallback[key]
     : fallbackData
-  const data = isUndefined(cachedData) ? fallback : cachedData
+  const isUsingFallbackData = isUndefined(cachedData)
+  const data = isUsingFallbackData ? fallback : cachedData
   const error = cached.error
 
   // Use a ref to store previous returned data. Use the inital data as its inital value.
@@ -117,6 +118,7 @@ export const useSWRHandler = <Data = any, Error = any>(
   // - Suspense mode and there's stale data for the initial render.
   // - Not suspense mode and there is no fallback data and `revalidateIfStale` is enabled.
   // - `revalidateIfStale` is enabled but `data` is not defined.
+  // - `revalidateIfStale` is set to false and there's stale data which is from fallbackData.
   const shouldDoInitialRevalidation = (() => {
     // If `revalidateOnMount` is set, we take the value directly.
     if (isInitialMount && !isUndefined(revalidateOnMount))
@@ -129,6 +131,11 @@ export const useSWRHandler = <Data = any, Error = any>(
     // stale data so no need to revalidate immediately on mount again.
     // If data exists, only revalidate if `revalidateIfStale` is true.
     if (suspense) return isUndefined(data) ? false : config.revalidateIfStale
+
+    // `revalidateIfStale` is set to false and there is stale data
+    // which is from fallback, meaning this data is not from request
+    // so we need revalidate.
+    if (!config.revalidateIfStale && isUsingFallbackData) return true
 
     // If there is no stale data, we need to revalidate on mount;
     // If `revalidateIfStale` is set to true, we will always revalidate.

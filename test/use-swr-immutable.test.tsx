@@ -7,7 +7,8 @@ import {
   createKey,
   nextTick as waitForNextTick,
   focusOn,
-  renderWithConfig
+  renderWithConfig,
+  createResponse
 } from './utils'
 
 const focusWindow = () => focusOn(window)
@@ -192,5 +193,28 @@ describe('useSWR - immutable', () => {
     expect(fetcher).toBeCalledTimes(2)
     expect(fetcher).nthCalledWith(1, key + '0')
     expect(fetcher).nthCalledWith(2, key + '1')
+  })
+
+  it('should revalidate on mount when `revalidateIfStale` and `fallbackData` are enabled', async () => {
+    const fetcher = () => createResponse(1, { delay: 50 })
+
+    const key = createKey()
+    const useData = () =>
+      useSWR(key, fetcher, {
+        revalidateIfStale: false,
+        fallbackData: 0
+      })
+
+    function Page() {
+      const { data } = useData()
+      return <p>data: {data}</p>
+    }
+
+    renderWithConfig(<Page />)
+
+    await screen.findByText('data: 0')
+
+    await waitForNextTick()
+    await screen.findByText('data: 1')
   })
 })
